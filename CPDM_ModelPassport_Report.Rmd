@@ -1,0 +1,1040 @@
+---
+title: |
+  `\vspace{-1.2cm} \hspace*{0in} \large`{=latex} Model Passport: `r format(Sys.Date())`
+output:
+  pdf_document:
+    latex_engine: xelatex
+urlcolor: blue
+linkcolor: blue
+header-includes:
+  - \usepackage{fancyhdr}
+  - \usepackage{fontspec}
+  - \setmainfont{Liberation Sans} 
+  - \geometry{top=0.5in,left=0.5in,bottom=1.25in,right=0.5in}
+  - \newcommand{\headerwidth}{0.2in}
+  - \newcommand{\headerleft}{0.2in}
+  - \usepackage{leading}
+  - \fontsize{11pt}{11pt}\selectfont
+  - \usepackage{titlesec}
+  - \titlespacing{\section}{0pt}{11pt plus 2pt minus 1pt}{0pt plus 1pt minus 1pt}
+  - \titlespacing{\subsection}{0pt}{11pt plus 2pt minus 1pt}{0pt plus 1pt minus 1pt}
+  - \titlespacing{\subsubsection}{0pt}{11pt plus 2pt minus 1pt}{0pt plus 1pt minus 1pt}
+  - \renewcommand{\headrulewidth}{0pt}
+  - \addtolength{\headheight}{1.0cm}
+  - \pagestyle{fancy}
+  - \renewcommand{\headrulewidth}{0pt}
+  - \usepackage[labelformat=empty]{caption}
+  - \usepackage[strings]{underscore}
+  - \let\oldsection\section
+  - \renewcommand\section{\clearpage\oldsection}
+  - \usepackage{caption}
+  - \fancyfoot[RO,RE]{\thepage}
+  - \fancypagestyle{plain}{\pagestyle{fancy}} 
+  - \fancyhead[C]{\vspace{-0.4in}\raisebox{0.15in}{\fontsize{19}{21}\selectfont\bfseries Center for Patient Derived Models}}
+  - \fancyhead[L]{\vspace{-0.18in}\hspace*{-0.2in}\includegraphics[height=1.2cm]{dfci_logo3.jpg}}
+  - \usepackage{floatrow}
+  - \renewcommand{\headrulewidth}{0pt} 
+  - \renewcommand{\footrulewidth}{0pt} 
+  - \renewcommand{\sectionmark}[1]{\markright{#1}}
+  
+  - \usepackage{array} % For table formatting
+  - \usepackage{graphicx} % For resizebox if needed
+  - \let\oldtabular\tabular
+  - \let\endoldtabular\endtabular
+  - \renewenvironment{tabular}{\small\oldtabular}{\endoldtabular} % Use \small for 9pt
+
+ 
+params:
+  samplename: ""
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dpi=96)
+
+
+```
+
+
+```{r echo=FALSE, results='hide',message=FALSE, warning=FALSE}
+# Function to install and load a package
+install_and_load <- function(package) {
+  if (!requireNamespace(package, quietly = TRUE)) {
+    install.packages(package, repos = 'http://cran.rstudio.com/')
+  }
+  library(package, character.only = TRUE)
+}
+
+# Install and load TinyTeX
+if (!tinytex::is_tinytex()) {
+  install.packages('tinytex', repos = 'http://cran.rstudio.com/')
+  tinytex::install_tinytex()
+}
+tinytex::tlmgr_install("xetex")
+
+# Install and load CRAN packages
+cran_packages <- c("glue", "data.table", "dplyr", "knitr", "stringr", "BioCircos",
+                   "tidyr", "ggplot2", "ggridges", "tidyverse", "lemon", "kableExtra",
+                   "cowplot", "gridExtra", "png", "jpeg", "grid", "gtable", "readxl",
+                   "forcats", "xtable", "ggrepel", "htmlwidgets", "chromote", "webshot2",
+                   "rsvg", "magick", "tiff")
+
+for (pkg in cran_packages) {
+  install_and_load(pkg)
+}
+
+# Install and load Bioconductor packages
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager", repos = 'http://cran.rstudio.com/')
+}
+bioc_packages <- c("maftools", "GenVisR", "preprocessCore", "GenomicRanges", "biomaRt")
+BiocManager::install(bioc_packages, ask = FALSE)
+
+# Load Bioconductor packages
+library(maftools)
+library(GenVisR)
+library(preprocessCore)
+library(GenomicRanges)
+library(biomaRt)
+
+```
+
+```{r echo=FALSE, results='hide',message=FALSE, render= lemon::lemon_print, warning=FALSE}
+
+# Use the samplename parameter
+samplename <- params$samplename
+
+sample_matrix <- read.csv("sample_matrix.csv")
+
+# cBioPortal Link
+cbio_profile <- read.csv("cBioPortal_links_for_patient_level_data.csv")
+
+ 
+# Oncopanel
+interval_data <- read.delim2("POPv3_AllTargetedRegions.interval_list", header = FALSE, stringsAsFactors = FALSE)
+
+#oncoKB
+oncokb <- read.csv("oncoKB.csv")
+filtered_oncokb <- oncokb %>% filter(Is.Tumor.Suppressor.Gene == "Yes" | Is.Oncogene == "Yes")
+
+
+# Model image and growth curve 
+filename_image <- list.files(pattern = paste0("^", samplename, ".*TQ\\.tif$"),full.names = TRUE)
+model_image <- image_read(filename_image)
+ 
+# Read the SVG file Growth_Curves
+filename_growthcurve <- list.files(pattern = paste0("^", samplename, ".*_growth_ci_plot\\.svg$"))
+growthcurve <- image_read_svg(filename_growthcurve)
+
+# HLA-Typing and STR-profile
+filename <- list.files(pattern = paste0("^", samplename, ".*\\.genotypes\\.tsv$"))[1]
+hla <- read.delim2(filename, header = TRUE, sep = "\t")
+
+# STR Profile
+#str_profile <- read.csv("UNIQUE_PROFILE_STR_DATA.csv")STR_Profile_Data.csv
+str_profile <- read.csv("STR_Profile_Data.csv")
+# TCGA Correlation
+
+tcga <- "/TCGA_mat.tsv"
+tcgainfo <- read.csv("Celligner_info.csv")
+
+filename_tpms <- list.files(pattern = paste0("^", samplename, ".*\\.quant\\.sf$"))[1]
+tpms <- read.table(filename_tpms, header = TRUE, sep = "\t")
+
+ensdb <- read.csv("ensembl.hg38.csv")
+
+filename_STARcount <- list.files(pattern = paste0("^", samplename, ".*\\.hg38_ReadsPerGene.out\\.tab$"))
+CPDM_STARcount <- read.delim2(filename_STARcount)
+
+#CPDM_STARcount <- read.delim2(paste0(samplename,".hg38_ReadsPerGene.out.tab"))
+
+# SNV
+
+filename_gatk <- list.files(pattern = paste0("^", samplename, ".*\\.oncoKB\\.maf$"))
+gatk <- read.delim2(filename_gatk, header = TRUE, sep = "\t")
+
+tier <- read.delim2("data_mutations_extended.txt",header = TRUE, sep = "\t")
+
+# Copy Number Variants
+cnr = list.files(pattern = ".cnr")
+cnr.table <- read.delim2(cnr, header = T)
+
+cns = list.files(pattern = ".call.cns")
+cns.table <- read.delim2(cns, header = T)
+
+
+# fusions
+filename_fusions <- list.files(pattern = paste0("^", samplename, ".*\\.star-fusion.fusion_predictions.abridged\\.tsv\\.gz$"))
+fusions <- read.delim2(filename_fusions)
+
+```
+
+
+## Model
+\vspace*{3mm}
+
+```{r clinical, echo=FALSE,message=FALSE,warning=FALSE}
+
+cohortmatrixSample <- sample_matrix[grepl(samplename, sample_matrix$CPDM.ID), ]
+
+model_pro <- cohortmatrixSample[c("Model.Originator.ID", "CPDM.ID","Sample.Type", "Route")]
+
+variable_name <- cohortmatrixSample$Model.Originator.ID
+
+# Renaming Data Frame 
+model_pro <- model_pro %>% dplyr::rename(
+    "Model Originator ID:" = Model.Originator.ID,
+    "CPDM ID:" = CPDM.ID,
+    "Sample Type:" =  Sample.Type,
+    "Route of implantation:" = Route)
+
+model_pro <- as.data.frame(t(model_pro))
+names(model_pro) <- "Model Properties"
+
+# Replace blank spaces with NA
+model_pro[model_pro == ""] <- NA
+
+############cbio_link##############
+
+cbio_link <- cbio_profile %>%
+  filter(CPDM_ID == samplename) 
+cbio_link <- cbio_link[c("link")] 
+
+cbio_link <- if (nrow(cbio_link) == 0) {
+  NA
+} else {
+  paste0("\\href{", cbio_link$link, "}{", variable_name, "}") 
+}
+
+#################################
+
+
+model_pro2 <- cohortmatrixSample[c("Cell.Line.type",  "Growth.Media", "Growth.Substrate")]
+
+model_pro2 <- model_pro2 %>% dplyr::rename(
+    "Cell Line type:" = Cell.Line.type,
+    "Growth Media:" = `Growth.Media`,
+    "Growth Substrate:" = `Growth.Substrate`
+    
+)
+
+model_pro2 <- as.data.frame(t(model_pro2))
+names(model_pro2) <- "Model Properties"
+
+# Replace blank spaces with NA
+model_pro2[model_pro2 == ""] <- NA
+
+model_pro2 <- rbind(model_pro2, "cBioPortal link:" = cbio_link)
+
+#################################
+
+mtest <- data.frame(
+  "X" = rownames(model_pro),
+  "Y" = ifelse(grepl("href", model_pro$`Model Properties`), 
+    model_pro$`Model Properties`, 
+    paste0("\\textit{", model_pro$`Model Properties`, "}")),
+  "b" = "",
+  "Z" = c(rownames(model_pro2), rep("", nrow(model_pro) - nrow(model_pro2))),
+  "A" = ifelse(
+    grepl("href", model_pro2$`Model Properties`), 
+    model_pro2$`Model Properties`, 
+    paste0("\\textit{", model_pro2$`Model Properties`, "}"))
+)
+
+kable(mtest, col.names = NULL, format = "latex", booktabs = TRUE, linesep = "", escape = FALSE)  %>% 
+  column_spec(1, width = "4cm") %>% # x
+  column_spec(2, width = "4cm") %>% # y
+  column_spec(3, width = "2.5cm") %>% # b
+  column_spec(4, width = "4cm") # z
+
+```
+
+
+## Clinical Properties
+\vspace*{3mm}
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+
+clinical_pro <- cohortmatrixSample[c("Gender", "Age.of.Patient.at.Sample.Collection",  
+                                     "Site.of.Tissue.Procurement.for.This.Surgery",
+                                     "Tumor.Status.at.Time.of.Surgery",
+                                     "Integrated.Research.Diagnosis..Brain.Procurement.Models.Only.",
+                                     "Cancer.s.Histology")]
+
+clinical_pro$Age.of.Patient.at.Sample.Collection <- as.numeric(clinical_pro$Age.of.Patient.at.Sample.Collection)
+
+clinical_pro$Age.of.Patient.at.Sample.Collection <- round(clinical_pro$Age.of.Patient.at.Sample.Collection, 1)
+
+clinical_pro <- clinical_pro %>% 
+  dplyr::rename(
+    "Gender:" = Gender,
+    "Age of Patient at Sample Collection:" = Age.of.Patient.at.Sample.Collection, 
+    "Site of Tissue Procurement for This Surgery:" = Site.of.Tissue.Procurement.for.This.Surgery,
+    "Tumor Status at Time of Surgery:" = Tumor.Status.at.Time.of.Surgery, 
+    "Integrated Research Diagnosis (Brain Procurement Models Only):" = Integrated.Research.Diagnosis..Brain.Procurement.Models.Only.,
+    "Cancer's Histology:"= Cancer.s.Histology) 
+
+clinical_pro <- as.data.frame(t(clinical_pro))
+
+clinical_pro$`Clinical Properties` <- paste0("\\textit{", clinical_pro$`Clinical Properties`, "}")
+
+names(clinical_pro) <- "Clinical Properties"
+
+# apply italics font for variables
+clinical_pro$`Clinical Properties` <- ifelse(
+  is.na(clinical_pro$`Clinical Properties`),"NA",  # Replace NA with empty string
+  paste0("\\textit{", clinical_pro$`Clinical Properties`, "}")  # Apply italics
+)
+
+knitr::kable(clinical_pro, col.names = NULL, format = "latex", booktabs = TRUE, linesep = "", escape = FALSE)  %>% 
+  kable_styling(full_width = T, font_size = 9) %>% 
+  column_spec(1, width = "11.5cm") %>% 
+  column_spec(2, width = "5.5cm")
+
+```
+
+\vspace{2mm}
+
+## Model Image and Growth Curve
+
+\vspace{1mm}
+
+```{r image, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left', fig.height= 2}
+
+# Resize the images
+#model_image <- image_resize(modelimage, "400x300") 
+model_image <- image_resize(model_image, "400x300") 
+model_img <- rasterGrob(as.raster(model_image), interpolate = FALSE)
+
+growth_curve_path <- image_resize(growthcurve, "400x300")
+growth_curve_img <- rasterGrob(as.raster(growth_curve_path), interpolate = FALSE)
+
+# Create a blank grob for spacing
+spacer <- grid::rectGrob(gp = grid::gpar(col = NA))
+
+# Arrange the images
+grid.arrange(model_img, spacer, growth_curve_img, ncol = 3, widths = c(0.5, 0.15, 0.5))
+
+```
+
+
+
+
+## STR Profile 
+\vspace*{2mm}
+
+```{r str, echo=FALSE, message=FALSE,warning=FALSE}
+
+str_profile_cpdm <- str_profile[str_profile$MODEL_ORIGINATOR_ID == samplename | str_profile$PARENT_ID == samplename , ]
+# Replace "NA" strings with empty spaces
+str_profile_cpdm[str_profile_cpdm == "NA"] <- " "
+
+
+str_profile_cpdm <- str_profile_cpdm %>% 
+  dplyr::rename(
+    "Marker" = MARKER,
+    "Allele 1" = ALLELE.1,
+    "Allele 2" = ALLELE.2,
+    "Model ID" = SAMPLE.NAME
+  )
+
+str_profile_cpdm <- str_profile_cpdm[c("Model ID", "Marker", "Allele 1", "Allele 2")]
+
+  
+if (nrow(str_profile_cpdm) == 0) {
+  # Create a placeholder table with a message
+  reshaped_str <- data.frame(
+    ID = samplename,  # Example placeholder ID (modify as needed)
+    Marker1 = "No\nSTR\nProfile\nAvailable",
+    Marker2 = "No\nSTR\nProfile\nAvailable"  # Repeat for additional markers if required
+  )
+} else {
+  reshaped_str <- str_profile_cpdm %>%
+      mutate(
+      Alleles = case_when(
+        `Allele 1` != " " & `Allele 2` != " " ~ paste(`Allele 1`, `Allele 2`, sep = ","),
+        `Allele 1` != " " ~ `Allele 1`,
+        `Allele 2` != " " ~ `Allele 2`,
+        TRUE ~ ""
+      )) %>%
+    { .[, c("Model ID", "Marker", "Alleles")] } %>%
+    pivot_wider(names_from = Marker, values_from = Alleles)
+}
+
+knitr::kable(reshaped_str,format = "latex", booktabs = TRUE, linesep = "", escape = FALSE)  %>% 
+  kable_styling(full_width = T, font_size = 9) 
+
+
+```
+
+
+## HLA-Typing 
+\vspace*{2mm}
+
+```{r hla,echo=FALSE, message=FALSE, warning=FALSE}
+
+# Check if the file is empty or has rows
+if (nrow(hla) > 0) {
+  hlaT <- as.data.frame(t(hla))
+  hlaT$Gene <- rownames(hlaT)
+  hlaT <- hlaT[2:nrow(hlaT), ]
+  names(hlaT)[1] <- "HLA_Type"
+
+  hlaT <- hlaT[, c(2, 1)]
+  names(hlaT)[1] <- "Allele"
+  rownames(hlaT) <- NULL
+} else {
+  # If the file is empty, assign NULL to hlaT
+  hlaT <- NULL
+}
+
+# Empty data frame for the output
+hla_typing <- data.frame(Gene = character(), Allele1 = character(), Allele2 = character(), stringsAsFactors = FALSE)
+
+# Proceed only if hlaT is not NULL
+if (!is.null(hlaT)) {
+  genes <- unique(sub("[0-9]+$", "", hlaT$Allele))
+  # A,B,C genes will have "HLA-" prefix
+  selected_genes <- c("A", "B", "C")
+
+  for (gene in genes) {
+    gene_data <- hlaT[grep(paste0("^", gene), hlaT$Allele), ]
+    if (gene %in% selected_genes) {
+      gene_name <- paste0("HLA-", gene)
+    } else if (gene %in% c("DPB", "DQA", "DQB", "DRB")) {
+      gene_name <- paste0(gene, "1")
+    } else {
+      gene_name <- gene
+    }
+    # Two alleles to add to the output
+    if (nrow(gene_data) >= 2) {
+      allele1 <- gene_data$HLA_Type[1]
+      allele2 <- gene_data$HLA_Type[2]
+      hla_typing <- rbind(hla_typing, data.frame(Gene = gene_name, `Allele 1` = allele1, `Allele 2` = allele2, stringsAsFactors = FALSE))
+    }
+  }
+}
+
+# Fill with "No HLA-typing available" if no data
+if (nrow(hla_typing) == 0) {
+  hla_typing <- data.frame(
+    Gene = "No HLA",
+    `Allele 1` = "Typing",
+    `Allele 2` = "Available",
+    stringsAsFactors = FALSE
+  )
+}
+
+colnames(hla_typing) <- c("Gene", "Allele 1", "Allele 2")
+#########################
+
+# Reshape the hla_typing table so genes are columns and alleles are rows
+if (nrow(hla_typing) > 0 && "Allele 1" %in% colnames(hla_typing) && "Allele 2" %in% colnames(hla_typing)) {
+  # Prepare the reshaped table
+  reshaped_hla <- data.frame(
+    `Allele 1` = setNames(hla_typing$`Allele 1`, hla_typing$Gene),
+    `Allele 2` = setNames(hla_typing$`Allele 2`, hla_typing$Gene),
+    check.names = FALSE
+  )
+  reshaped_hla <- t(reshaped_hla)  # Transpose the data frame
+  colnames(reshaped_hla) <- unique(hla_typing$Gene)  # Set genes as column names
+} else {
+  # If no data, assign a placeholder
+  reshaped_hla <- data.frame(
+    `HLA Typing` = c("No data available"),
+    check.names = FALSE
+  )
+}
+
+knitr::kable(reshaped_hla,format = "latex", booktabs = TRUE, linesep = "", escape = FALSE)  %>% 
+  kable_styling(full_width = T, font_size = 9) 
+
+```
+
+\pagestyle{fancy}
+\fancyfoot[CO,CE]{Model Originator ID: \textbf{`r variable_name`}}
+\fancyfoot[R]{\thepage}
+\newpage
+
+
+## Correlation to TCGA Samples
+
+```{r echo=FALSE, results='hide',message=FALSE, warning=FALSE}
+
+transcript_ids <- tpms$Name 
+genes <- ensdb[ensdb$transcript_id %in% transcript_ids,]
+
+# Merge the gene symbols with the TPM data
+tpms_with_symbols <- merge(tpms, genes, by.x = "Name", by.y = "transcript_id", all.x = TRUE)
+
+CPDM_count <- tpms_with_symbols
+
+CPDM_count_tpms2 <- CPDM_count[order(CPDM_count$TPM, decreasing = T),]
+
+CPDM_count_tpms3 <- CPDM_count_tpms2[,c(2,4,6,7)]
+
+CPDM_count_tpms3 <- CPDM_count_tpms3[!duplicated(CPDM_count_tpms3$gene_name),]
+
+#CPDM_0039X_STARcount <- read.delim2("/Users/ledia/Desktop/CPDM_0802X_PDCL_P15.hg38_ReadsPerGene.out.tab")
+
+merged_count <- merge(CPDM_STARcount[, c("N_unmapped","X0")], CPDM_count_tpms3[, c("gene_id", "Length","gene_name")], by.y = "gene_id", by.x = "N_unmapped", all.x = TRUE)
+#libsize <- sum(merged_count$X0)
+
+merged_count2 <- merged_count[!is.na(merged_count$Length),]
+
+tpm <- function(counts, lengths) {
+  rate <- counts / lengths
+  rate / sum(rate) * 1e6
+}
+
+merged_count2$TPM <- tpm(merged_count2$X0, merged_count2$Length)
+
+merged_count2.2 <- merged_count2#[,5]
+rownames(merged_count2.2) <- merged_count2.2$gene_name
+
+staranno <- merged_count2.2
+names(staranno) <- c("ID","Count","Length","Gene_Name","TPM")
+
+tpmsmatt <- as.matrix(as.numeric(as.character(merged_count2.2[,5])))##tpms33[,2])))
+rownames(tpmsmatt) <- rownames(merged_count2.2) #rownames(tpms33) 
+colnames(tpmsmatt)[1] <- "sample" #samplename
+
+### Correlation to TCGA Lineage
+
+TCGA_mat <-  readr::read_tsv(file.path(tcga)) %>%
+  as.data.frame() %>%
+  tibble::column_to_rownames('Gene') %>%
+  as.matrix() 
+
+
+tcgainfo <- tcgainfo[tcgainfo$type == "tumor",]
+tpmsmat22 <- merged_count2.2
+
+
+#tpmsmat22 <- tpmsmat22[order(tpmsmat22$sample, decreasing = T),] # not produceple change the column name to sample 
+
+tpmsmat2matv22 <- as.matrix(tpmsmat22[1:nrow(tpmsmat22),5])
+rownames(tpmsmat2matv22) <- rownames(tpmsmat22)
+colnames(tpmsmat2matv22) <-  "sample" #samplename
+
+
+tpmsmat2mat_log22 <- normalize.quantiles(log2(tpmsmat2matv22))
+rownames(tpmsmat2mat_log22) <- rownames(tpmsmat2matv22)
+colnames(tpmsmat2mat_log22)[1] <- "sample" #samplename
+
+commongenes <- intersect(rownames(tpmsmat2mat_log22), rownames(TCGA_mat))
+
+tpmsmat2mat_log2cg <- as.data.frame(tpmsmat2mat_log22[commongenes,1])
+TCGA_matcg <- TCGA_mat[commongenes,]
+
+names(tpmsmat2mat_log2cg) <- "sample" #samplename
+
+samplecorrdf <- data.frame("tcga"=colnames(TCGA_matcg), "corr"=0)
+for(i in 1:nrow(samplecorrdf)){
+  x=as.numeric(as.character(tpmsmat2mat_log2cg[,1]))
+  y=as.numeric(as.character(TCGA_matcg[,samplecorrdf$tcga[i]]))
+  
+  cornum <- cor(x, y, method = "spearman")
+  
+  samplecorrdf$corr[i] <- cornum 
+}
+
+samplecorrdf_anno <- merge(samplecorrdf, tcgainfo[,c("sampleID","lineage")], by.x = "tcga" , by.y = "sampleID", all.x = T)
+
+
+linagedf <- aggregate(samplecorrdf_anno$corr, by = list(samplecorrdf_anno$lineage), mean)
+
+```
+
+
+```{r plotTCGA,fig.width = 10, fig.height = 3, echo=FALSE,message=FALSE, warning=FALSE, dpi=300} 
+
+# Calculate mean correlation per lineage
+mean_corr_df_alt <- aggregate(corr ~ lineage, data = samplecorrdf_anno, FUN = mean, na.rm = TRUE)
+
+mean_corr_df_alt <- mean_corr_df_alt[order(-mean_corr_df_alt$corr), ] #descending order
+
+top_7_mean_corr_df <- head(mean_corr_df_alt, 7) # top 7 lineage
+bottom_7_mean_corr_df <- tail(mean_corr_df_alt, 7) # bottom 7 lineage
+
+# Combine both top and bottom 7
+selected_lineages <- rbind(top_7_mean_corr_df, bottom_7_mean_corr_df)
+
+# Filter original data for the selected lineages
+filtered_data_tcga <- samplecorrdf_anno %>%
+  filter(lineage %in% selected_lineages$lineage)
+
+filtered_data_tcga <- filtered_data_tcga %>%
+  mutate(rank_group = ifelse(lineage %in% top_7_mean_corr_df$lineage, "Top 7", "Bottom 7"))
+
+filtered_data_tcga <- filtered_data_tcga %>%
+  mutate(lineage = str_to_title(lineage))
+
+#renaming some of the lineagein abrivation 
+filtered_data_tcga$lineage <- ifelse(filtered_data_tcga$lineage == "Central_nervous_system", "CNS", filtered_data_tcga$lineage)
+filtered_data_tcga$lineage <- ifelse(filtered_data_tcga$lineage == "upper_aerodigestive", "UAD", filtered_data_tcga$lineage)
+filtered_data_tcga$lineage <- ifelse(filtered_data_tcga$lineage == "Soft_tissue", "Soft tissue", filtered_data_tcga$lineage)
+filtered_data_tcga$lineage <- ifelse(filtered_data_tcga$lineage == "Upper_aerodigestive", "UADT", filtered_data_tcga$lineage)
+
+ggplot(filtered_data_tcga, aes(x = corr, y = fct_reorder(lineage, corr, .fun = mean), fill = rank_group)) +
+  geom_violin(scale = "width",trim = FALSE) +
+  scale_fill_manual(values = c("Top 7" = "blue3", "Bottom 7" = "red3"), name = "Rank Group") +
+  xlab("Pearson Correlation") +
+  ylab("Lineage") +
+  scale_y_discrete(position = "right") +
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 0, color = "black", size=11),
+        axis.text.y = element_text(size=10),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        panel.spacing = unit(0, "lines"))
+
+```
+
+## Small Nucleotide Variants (Single Nucleotide Polymorphism and Indels)
+
+```{r filterMAF, echo=FALSE, cache=TRUE, results='hide',message=FALSE, warning=FALSE}
+gatk_p <- gatk
+vc = c("Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "Missense_Mutation" ,"Nonsense_Mutation")
+
+maf <- gatk_p
+maf <- maf[maf$Variant_Classification %in% vc,]
+
+maf$VAF = round(maf$t_alt_count/maf$t_depth, 3)
+maf$MAX_AF <- as.numeric(as.character(maf$MAX_AF))
+
+# cosmic filter
+cosmicmaf <- maf[maf$Existing_variation %like% "COS",]
+rownames(cosmicmaf) <- 1:nrow(cosmicmaf)
+cosl <- str_split(cosmicmaf$Existing_variation, ",")
+cosind <- c()
+
+for(i in 1:nrow(cosmicmaf)){
+  l <- unlist(cosl[i])
+  l2 <- length(l[l %like% "COS"])
+  if(l2 > 1){
+    cosind <- c(cosind,i)
+  }
+}
+cosmicmafkeep <- cosmicmaf[cosind,] 
+cosmicmafkeep <- cosmicmafkeep[(cosmicmafkeep$MAX_AF >= 0.001 & cosmicmafkeep$MAX_AF < 0.1) | is.na(cosmicmafkeep$MAX_AF),]
+
+oncokbkeep <- maf[maf$VARIANT_IN_ONCOKB == "True",]
+
+mafp <- maf[maf$FILTER == "PASS" & maf$MAX_AF < 0.001 & maf$VAF >= 0.05,]
+
+outputmaf <- rbind(mafp,oncokbkeep,cosmicmafkeep)
+outputmaf <- outputmaf[!duplicated(outputmaf),]
+
+outputmaf$Hugo_Symbol[outputmaf$Hugo_Symbol == "H3-3A"] <- "H3F3A"
+
+```
+
+```{r echo=FALSE, results='hide',message=FALSE, warning=FALSE, render=lemon::lemon_print}
+
+oncopanel_gene <- data.frame(gene = interval_data$V5)
+
+oncopanel_gene <- subset(oncopanel_gene, oncopanel_gene$gene != "")
+
+maf_subset <- outputmaf[outputmaf$Hugo_Symbol %in% oncopanel_gene$gene, ]
+
+maf_subset$VAF <- round(maf_subset$t_alt_count/maf_subset$t_depth,3)
+
+maf_filterd <- dplyr::select(maf_subset, Hugo_Symbol, HGVSp_Short, HGVSc,  Reference_Allele, Tumor_Seq_Allele2, Variant_Classification, Variant_Type,VAF,ONCOGENIC)
+
+rownames(maf_filterd) <- NULL
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE}
+
+maf_filterd <- dplyr::select(maf_subset, Hugo_Symbol, HGVSp_Short, HGVSc,  Reference_Allele, Tumor_Seq_Allele2, Variant_Classification, Variant_Type,VAF,ONCOGENIC )
+
+rownames(maf_filterd) <- NULL
+
+maf_filterd <- maf_filterd %>%
+  mutate(Variant_Classification = str_replace_all(Variant_Classification, c("Missense_Mutation" = "Missense", "Nonsense_Mutation" = "Nonsense")))
+
+tier_maf_filterd <- dplyr::left_join(
+  maf_filterd, 
+  tier %>% dplyr::select(Hugo_Symbol, Amino_Acid_Change, Tier), 
+  by = c("Hugo_Symbol" = "Hugo_Symbol", "HGVSp_Short" = "Amino_Acid_Change") 
+) 
+
+tier_maf_filterd <- dplyr::distinct(tier_maf_filterd) 
+
+tier_maf_filterd <- tier_maf_filterd %>%
+  dplyr::group_by(Hugo_Symbol, HGVSp_Short) %>%
+  dplyr::slice_min(order_by = Tier, with_ties = FALSE) %>%
+  dplyr::ungroup()
+
+tier_maf_filterd <- dplyr::rename(maf_filterd, c("Hugo Symbol" = "Hugo_Symbol",
+                                                 "Protein Change" = "HGVSp_Short", 
+                                                 "HGVSc" = "HGVSc", 
+                                                 "Reference Allele" = "Reference_Allele",
+                                                 "Alternate Allele" = "Tumor_Seq_Allele2", #alternate
+                                                 "Variant Classification" = "Variant_Classification",
+                                                 "Variant Type" = "Variant_Type",
+                                                 "VAF" = "VAF", 
+                                                 "OncoKB" = "ONCOGENIC"))
+
+tier_maf_filterd$`Reference Allele` <- ifelse(nchar(tier_maf_filterd$`Reference Allele`) > 3, 
+                                              paste0(substr(tier_maf_filterd$`Reference Allele`, 1, 3), "..."), 
+                                              tier_maf_filterd$`Reference Allele`)
+
+column_names <- tier_maf_filterd %>% 
+  names() %>% 
+  str_replace_all( " ", "\n")
+
+# Filter the top 5 rows by VAF and order in descending order
+
+order_maf <- tier_maf_filterd %>% arrange(factor(OncoKB, c("Oncogenic", "Likely Oncogenic","Resistance", "Likely Neutral", "Inconclusive", "Unknown")))
+
+top5_tier_maf_filterd <- order_maf %>% dplyr::slice(1:5)
+
+knitr::kable(top5_tier_maf_filterd,booktabs = TRUE, format = "latex", longtable = TRUE, linesep = "", align = "l", 
+              col.names = linebreak(column_names, align = "l"), escape = FALSE)%>% 
+  kable_styling(font_size = 9) 
+
+
+```
+
+## Copy Number Variants 
+
+```{r CNV_CNR, cache = TRUE, echo=FALSE, results='hide',message=FALSE, warning=FALSE}
+cnr.table <- cnr.table[cnr.table$gene != "Antitarget",] 
+cnr.table <- cnr.table[cnr.table$depth != 0,]
+cnr.table$row_num <- seq.int(nrow(cnr.table))
+
+cns.table$segid <- paste(cns.table$chromosome, ":", cns.table$start, "-", cns.table$end, sep = "")
+cns.table <- cns.table[cns.table$chromosome %in% cnr.table$chromosome,]
+rownames(cns.table) <- 1:nrow(cns.table)
+rownames(cnr.table) <- 1:nrow(cnr.table)
+
+cns.table_g <- GRanges(cns.table$chromosome, IRanges(cns.table$start, cns.table$end))
+cnr.table_g <- GRanges(cnr.table$chromosome, IRanges(cnr.table$start, cnr.table$end))
+
+cnr.cns_o <- as.data.frame(findOverlaps(cnr.table_g,cns.table_g,select = "all"))
+
+cnr.table2 <- merge(cnr.table,cnr.cns_o, by.x = 0, by.y = "queryHits", all.x = T)
+cnr.table2 <- merge(cnr.table2, cns.table[,c(11,5,6)], by.x = "subjectHits", by.y = 0, all.x = T )
+
+cnr.table2 <- cnr.table2[order(cnr.table2$row_num),]
+tablength <- unique(cnr.table2$row_num)
+
+cnr.table3 <- cnr.table2[!duplicated(cnr.table2$row_num),]
+
+cnr.table <- merge(cnr.table, cnr.table3[,10:13], by = "row_num", all.x = T)
+cnr.table$log2 <- as.numeric(as.character(cnr.table$log2))
+cnr.table$log2.y <- as.numeric(as.character(cnr.table$log2.y))
+
+```
+
+```{r subsetsnrtable, echo=FALSE, results='hide',message=FALSE, warning=FALSE}
+
+cnr.table5sub <- cnr.table[cnr.table$log2 >= -5,]
+cnr.table5sub <- cnr.table5sub[cnr.table5sub$log2 <= 5,]
+
+cnr.table5sub <- cnr.table5sub[cnr.table5sub$log2.y >= -5,]
+cnr.table5sub <- cnr.table5sub[cnr.table5sub$log2.y <= 5,]
+
+rownames(cnr.table5sub) <- 1:nrow(cnr.table5sub)
+
+if(nrow(cnr.table5sub) > 25000){
+  ran10k <- sample(1:nrow(cnr.table5sub), 25000)
+  ran10k <- ran10k[order(ran10k)]
+  cnr.table5random10k <- cnr.table5sub[ran10k,]
+  cnr.table <- cnr.table5random10k
+} else {cnr.table <- cnr.table5sub}
+
+cnr.table$color <- "#B2B3B9"
+cnr.table$color[cnr.table$cn < 2] <- "#1533FA"
+cnr.table$color[cnr.table$cn > 2] <- "#F02D2D"
+
+```
+
+
+```{r plotcn, fig.width = 8, fig.height = 1.5, echo=FALSE,message=FALSE, warning=FALSE}
+
+driving_genes <- unique(as.character(filtered_oncokb$Hugo.Symbol))
+
+# remove chM from the list
+cnr.table <- cnr.table[cnr.table$chromosome != "chrM", ]
+
+cnr.table <- cnr.table[!is.na(cnr.table$chromosome), ]
+
+cnr.table <- cnr.table[cnr.table$gene != "-", ]
+
+xlines <- data.frame("chromosome" = unique(cnr.table$chromosome), "xline" = 0)
+for(i in 1:nrow(xlines)){
+  xlines$xline[i] <- max(cnr.table$row_num[cnr.table$chromosome == xlines$chromosome[i]])
+}
+
+xlinesmid <- data.frame("chromosome" = unique(cnr.table$chromosome), "xline" = 0)
+for(i in 1:nrow(xlines)){
+  xlinesmid$xline[i] <- round(mean(cnr.table$row_num[cnr.table$chromosome == xlinesmid$chromosome[i]]))
+}
+
+filtered_data <- cnr.table %>%
+  filter((cn <= 1 | cn >= 3) & gene %in% driving_genes)
+filtered_data$abs_log2 <- abs(filtered_data$log2.y)
+filtered_data <- filtered_data[order(filtered_data$abs_log2, decreasing = TRUE), ]
+
+filtered_data <- filtered_data[!duplicated(filtered_data$gene), ]
+
+abso_12 <- filtered_data %>%
+  arrange(desc(abs_log2)) %>%
+  slice_head(n = 12)
+
+#####
+
+ggplot(cnr.table, aes(x=row_num, y=log2, color=chromosome)) +
+  geom_point(aes(x=row_num, y=log2.y, color=color), size = 0.5) +
+  ylab("Copy Ratio (log2)") +
+  xlab("") +
+  theme(panel.background = element_rect(fill = "white", colour = "white"),
+        panel.grid.major = element_line(size = 0.25, linetype = 'solid', colour = "black"),
+        panel.grid.major.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(), 
+        plot.margin = unit(c(0, 0.5, 0, 0.5), "cm")) + # Increased margins
+  theme(legend.position = "none") +
+  scale_colour_manual(values = c("#1533FA"="#1533FA", "#B2B3B9"="#B2B3B9", "#F02D2D"="#F02D2D")) +  
+  geom_vline(xintercept = c(min(cnr.table$row_num), xlines$xline), size = 0.25) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") + # horizontal line
+  geom_text(data = xlinesmid, aes(x = xline, y = -6, label = chromosome), angle = 90, size = 2.5, hjust = 0, colour="black") + 
+  
+  geom_text_repel(data = subset(abso_12, log2.y > 0), 
+                  aes(x = row_num, y = log2.y, label = gene), 
+                  color = "black", fontface = 1, size = 3, 
+                  box.padding = unit(1, "lines"), point.padding = unit(0.5, "lines"), segment.size = 0.1, hjust = -1, vjust=0.5, 
+                  angle= 90,min.segment.length = 0, 
+                  max.overlaps = Inf, nudge_x  = 0.5, direction = "x") + #angle = 90,
+  
+  geom_text_repel(data = subset(abso_12, log2.y < 0), 
+                  aes(x = row_num, y = log2.y, label = gene), 
+                  color = "black", fontface = 1, size = 3, 
+                  box.padding = unit(1, "lines"), point.padding = unit(0.5, "lines"), segment.size = 0.1, angle = 90, hjust = 1,
+                  max.overlaps = Inf, direction = "x", nudge_x = 0.5)
+
+
+
+```
+
+## Gene Fusions
+\vspace{-0.3cm}
+
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE}
+fdf <- nrow(fusions)
+
+fdrrun <- as.logical(fdf > 0)
+fdrrunN <- as.logical(fdf == 0)
+fusionsdf <- data.frame()
+
+```
+
+```{r fusiontable, echo=FALSE,message=FALSE, warning=FALSE, eval=fdrrun}
+
+
+fusions$LeftGene <- sub("\\^.*", "", fusions$LeftGene)
+
+fusions$RightGene <- sub("\\^.*", "", fusions$RightGene)
+
+fusionsdf <- fusions[!duplicated(fusions$X.FusionName),]
+
+rownames(fusionsdf) <- NULL
+
+fusionsdf <- fusionsdf[c("X.FusionName", "LeftBreakpoint", "RightBreakpoint", "JunctionReadCount", "SpanningFragCount")]
+
+fusionsdf <- fusionsdf[fusionsdf$JunctionReadCount >= 10 | fusionsdf$SpanningFragCount >= 10, ]
+
+```
+```{r, echo=FALSE,message=FALSE, warning=FALSE}
+
+fdrrun2 <- as.logical(nrow(fusionsdf) > 0)
+fdrrunN2 <- as.logical(nrow(fusionsdf) == 0)
+
+```
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE, results = 'asis'}
+
+if (fdrrunN || fdrrunN2) {
+cat("\\textbf{No Fusions Identified}\n\n")
+  
+}
+
+```
+
+```{r eval=fdrrun2, echo=FALSE,message=FALSE, warning=FALSE}
+
+fusions_filterd <- fusionsdf %>% dplyr::rename(
+    "Fusion Name" = X.FusionName,
+    "Left Breakpoint" = LeftBreakpoint,
+    "Right Breakpoint" = RightBreakpoint,
+    "Junction reads" = JunctionReadCount,
+    "Spanning reads"= SpanningFragCount) %>% mutate(Breakpoint = paste(fusionsdf$LeftBreakpoint, fusionsdf$RightBreakpoint,  sep = " "))
+
+fusions_filterd <- fusions_filterd %>% 
+  dplyr::select(`Fusion Name`, Breakpoint,`Junction reads`, `Spanning reads`) 
+
+```
+
+
+
+```{r plot_circos, echo=FALSE,message=FALSE, warning=FALSE, fig.height=5, eval=fdrrun2}
+
+fusions2 <- fusions[!duplicated(fusions$LeftBreakpoint),]
+fusions2 <- separate(fusions2,LeftBreakpoint, c("chr5","pos5","strnd5"), ":")
+fusions2 <- separate(fusions2,RightBreakpoint, c("chr3","pos3","strnd3"), ":")
+
+
+fusionsfinal <- fusions2
+# Remove "chr" from chr5 and chr3 columns
+fusionsfinal$chr5 <- sub("chr", "", fusionsfinal$chr5)
+fusionsfinal$chr3 <- sub("chr", "", fusionsfinal$chr3)
+
+subset_fusions <- fusionsfinal
+#filtered_subset
+subset_fusions <- subset_fusions[subset_fusions$chr5 %in% c(1:22, "X") & subset_fusions$chr3 %in% c(1:22, "X"), ]
+#subset JunctionReadCount and SpanningFragCount >= 10
+subset_fusions <- subset_fusions[subset_fusions$JunctionReadCount >= 10 | subset_fusions$SpanningFragCount >= 10, ]
+
+# Extracting data from the subset
+links_chromosomes_1 <- as.character(subset_fusions$chr5)
+links_chromosomes_2 <- as.character(subset_fusions$chr3)
+links_pos_1 <- as.numeric(as.character(subset_fusions$pos5))
+links_pos_2 <- as.numeric(as.character(subset_fusions$pos3))
+links_labels <- as.character(subset_fusions$LeftGene)
+
+tracklist = BioCircosBackgroundTrack( "myBackgroundTrack", minRadius = 0, maxRadius = 0.55,
+  borderSize = 0, fillColors = "#EEFFEE")  
+
+
+```
+
+```{r plot1, echo=FALSE,message=FALSE, warning= FALSE,results='hide',eval=fdrrun2}
+tracklist = tracklist + BioCircosLinkTrack('myLinkTrack', links_chromosomes_1, links_pos_1,
+  links_pos_1 + 50000000, links_chromosomes_2, links_pos_2, links_pos_2 + 750000,
+  maxRadius = 0.55, labels = links_labels)
+
+
+fusion_plot <- BioCircos(tracklist, genomeFillColor = "PuOr",chrPad = 0.02, displayGenomeBorder = FALSE, yChr =  FALSE,
+genomeTicksDisplay = FALSE,  genomeLabelTextSize = "8pt", genomeLabelDy = 0)
+# converting Circos plot to .jpeg form
+# Save the plot as an HTML file
+saveWidget(fusion_plot, "fusion_plot.html", selfcontained = TRUE)
+
+file_AB <- webshot(url = "fusion_plot.html", file = "fusion_plot.jpeg")
+
+# crop dimensions for the image 
+left_crop <- 280
+right_crop <- 280 
+top_crop <- 50
+bottom_crop <- 50
+
+img_crop_fusion <- image_read("fusion_plot.jpeg")
+
+# cropping all the side to remove unwanted space 
+new_width <- image_info(img_crop_fusion)$width - (left_crop + right_crop)
+new_height <- image_info(img_crop_fusion)$height - (top_crop + bottom_crop)
+
+# Perform the cropping
+cropped_fusions <- img_crop_fusion |>
+  image_crop(geometry = geometry_area(width = new_width, height = new_height, x_off = left_crop, y_off = top_crop))
+
+# cropped image 
+image_write(cropped_fusions, path =  "fusions.jpeg", format = "jpeg")
+
+b = knitr::include_graphics("fusions.jpeg")
+
+column_names <- c("Fusion Name", "Breakpoint", "Junction reads", "Spanning reads")
+
+
+column_names <- fusions_filterd %>% 
+  names() %>% 
+  str_replace_all( " ", "\n")
+
+
+fusions_top10 <- head(fusions_filterd, 10)
+y = fusions_top10 %>% 
+  knitr::kable(
+    format = "latex",
+    align = "l",
+    booktabs = TRUE,
+    longtable = TRUE,
+    linesep = "", row.names = FALSE,
+    #col.names = column_names) %>%
+    col.names = linebreak(column_names, align = "l"), escape = FALSE) %>% 
+  #kableExtra::kable_styling(full_width = F,font_size = 9)
+kableExtra::kable_styling(full_width = FALSE, font_size = 9, latex_options = "hold_position")
+
+
+```
+
+\newfloatcommand{btabbox}{table}
+\begin{figure}\TopFloatBoxes
+  \begin{floatrow}
+    \btabbox{%
+```{r, ,warning=F, message=F, fig.align="right", echo = F,eval=fdrrun2}
+y
+
+```
+    }{\caption{}}
+        \vspace{1.5cm}    
+        \hspace{0.1cm} % Add a small horizontal space between the tables
+        \ffigbox{%
+        
+```{r, fig.align = "right", echo = F, out.width="40%",out.height="30%",fig.align='right' ,warning=F, message=F, eval=fdrrun2}
+b
+```
+    }{\caption{}}
+    \vspace{-2cm}
+  \end{floatrow}
+\end{figure}
+
+\fancypagestyle{plain}{\pagestyle{fancy}}
+
+\newpage
+
+# Analysis Methods
+\vspace{3mm}
+
+## 1. HLA-Typing 
+\vspace{2mm}
+The human leukocyte antigen (HLA) locus typing was performed using the arcasHLA tool on RNA-seq data to precisely identify HLA allele genotypes.
+
+## 2. Correlation to TCGA Samples
+\vspace{2mm}
+The Cancer Genome Atlas Program (TCGA) correlation plot presents Spearman correlations of RNA-seq expression data to various TCGA samples across lineages. For clarity, some lineages have been abbreviated: "central_nervous_system" as "CNS", "upper_aerodigestive" as "UAD" and "Upper_aerodigestive" as "UADT". The plot highlights the seven top and bottom lineages based on their mean correlations.
+
+## 3. Small Nucleotide Variants (Single Nucleotide Polymorphism and Indels)
+\vspace{2mm}
+Mutations were identified using Mutect2 following Genome Analysis Toolkit (GATK4) best practices. The table includes only five alterations annotated in the OncoKB database, prioritizing "Oncogenic" mutations. Only specific mutation types are included; Frame_Shift_Del, Frame_Shift_Ins, In_Frame_Del, Missense, and Nonsense mutations. Variants were filtered based on criteria such as Variant Allele Frequency (VAF) but rescued based on its presence in COSMIC and OncoKB databases.  
+
+## 4. Copy Number Variants
+\vspace{2mm}
+Copy number variants (CNVs) were identified using CNVkit and a flat reference file. The plot shows segment gains (CN > 2) in red and segment loss (CN < 2) in blue. The top 12 OncoKB genes with the greatest absolute change in copy number (CN <1 or CN >= 3) are labeled.
+
+## 5. Gene Fusions
+\vspace{2mm}
+Structural variants were identified using STAR Fusion Caller. Only variants with at least 10 junction or spanning fragment reads are depicted in the Circos plot. The fusion table only shows the top 10 variants based on read support.
+
+\vspace{5mm}
+## References
+\vspace{3mm}
+\fontsize{9}{11}\selectfont
+1. Orenbuch, Rose, et al. "arcasHLA: High-Resolution HLA Typing from RNAseq." Bioinformatics, vol. 36, no. 1, Jan. 2020, pp. 33-40. https://doi.org/10.1093/bioinformatics/btz474.
+
+\fontsize{9}{11}\selectfont
+2. The Cancer Genome Atlas Research Network, et al. "The Cancer Genome Atlas Pan-Cancer Analysis Project." Nature Genetics, vol. 45, 2013, pp. 1113-1120. https://doi.org/10.1038/ng.2764.
+
+\fontsize{9}{11}\selectfont
+3. "Mutect2." GATK, Broad Institute. Accessed 24 Sep. 2024, https://gatk.broadinstitute.org/hc/en-us/articles/360037593851-Mutect2.
+
+Van der Auwera, Geraldine A., and Brian D. O'Connor. Genomics in the Cloud: Using Docker, GATK, and WDL in Terra. 1st ed., O'Reilly Media, 2020.
+
+\fontsize{9}{11}\selectfont
+4. Talevich, Eric, et al. "CNVkit: Genome-Wide Copy Number Detection and Visualization from Targeted DNA Sequencing." PLoS Computational Biology, vol. 12, no. 4, 21 Apr. 2016, e1004873. https://doi.org/10.1371/journal.pcbi.1004873.
+
+\fontsize{9}{11}\selectfont
+5. Haas, Brian J., et al. "Accuracy Assessment of Fusion Transcript Detection via Read-Mapping and De Novo Fusion Transcript Assembly-Based Methods." Genome Biology, vol. 20, no. 213, 2019, https://doi.org/10.1186/s13059-019-1842-9.
+
