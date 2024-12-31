@@ -1,0 +1,156 @@
+{
+  "name": "cpdm_modelpassport",
+  "title": "CPDM ModelPassport",
+  "summary": "CPDM ModelPassport Report",
+
+  "tags": [
+    "dxCompiler"
+  ],
+  "version" : "0.0.4",
+  "dxapi": "1.0.0",
+  "inputSpec": [
+    {
+      "name": "cbio_profile",
+      "label": "cBioPortal Profile",
+      "class": "file",
+      "patterns": ["*.csv"],
+      "optional": true,
+      "default": {
+        "$dnanexus_link": {
+          "id": "file-Gvk53f80YyvjBJYpfQ8994JP",
+          "project": "project-Gvb6zBQ0YyvXz35byYpBX3zX"
+        }
+      }
+    },
+    {
+      "name": "dna_project",
+      "class": "string",
+      "optional": true,
+      "default": "project-Gf1V9Vj079YZ0JYkv165PVbq"
+    },
+    {
+      "name": "growth_matrix",
+      "label": "Growth Curve",
+      "class": "file",
+      "patterns": ["*.svg"],
+      "optional": true,
+      "default": {
+        "$dnanexus_link": {
+          "id": "file-GvyBkVj0Yyvzx8p5KyfKGFqj",
+          "project": "project-Gvb6zBQ0YyvXz35byYpBX3zX"
+        }
+      }
+    },
+    {
+      "name": "model_image",
+      "label": "Model TC Image",
+      "class": "file",
+      "patterns": ["*.tif"],
+      "optional": true,
+      "default": {
+        "$dnanexus_link": {
+          "id": "file-GvyBkFQ0YyvvqG60qKGp7fgG",
+          "project": "project-Gvb6zBQ0YyvXz35byYpBX3zX"
+        }
+      }
+    },
+    {
+      "name": "rna_project",
+      "class": "string",
+      "optional": true,
+      "default": "project-Gb5y8Zj0BjVZpjbB9FF77g4X"
+    },
+    {
+      "name": "sample_matrix",
+      "label": "Sample Matrix",
+      "class": "file",
+      "patterns": ["*.csv"]
+    },
+    {
+      "name": "samplename",
+      "label": "Sample Name",
+      "class": "string"
+    },
+    {
+      "name": "str_profile",
+      "label": "STR Profile",
+      "class": "file",
+      "patterns": ["*.csv"],
+      "optional": true,
+      "default": {
+        "$dnanexus_link": {
+          "id": "file-Gx3vFzj0YyvzFpFY106q39Qk",
+          "project": "project-Gvb6zBQ0YyvXz35byYpBX3zX"
+        }
+      }
+    }
+  ],
+  "outputSpec": [
+    {
+      "name": "report",
+      "class": "file"
+    }
+  ],
+  "runSpec": {
+    "interpreter": "bash",
+    "timeoutPolicy": {
+      "*": {
+        "days": 2,
+        "hours": 0,
+        "minutes": 0
+      }
+    },
+    "headJobOnDemand": false,
+    "distribution": "Ubuntu",
+    "release": "20.04",
+    "version": "0",
+    "file": "src/code.sh"
+  },
+  "access": {
+    "network": [
+      "*"
+    ],
+    "project": "VIEW",
+    "allProjects": "VIEW"
+  },
+  "details": {
+    "originalName": "cpdm_modelpassport_v2",
+    "instanceTypeDB": "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",
+    "sourceCode": "H4sIAAAAAAAAAMVYe1fbOhL/359Cazg3wK0dQnhmS+8ptGELpQ0plyV0uz6OLTsitiUkxTi02c9+R/IjDi29pYee5XDA0ki/eWhmNJoUc0Foglp2yzCkK8bIY37sxNTHEXOFYJRLJ91Anw2ESMImUn8h1CURRsKNWYSd2JWcZHr6A3wlYUFI3BhXi/9A3pBQh3EaqK37yPSzTrMJ42vsSesoHW7fHZytD6bp5V17azgdsIPL9t1lR60G6nirHewq6vXB8YAFZ7t7e5vHPbMGLyT/WfSsnXbvrhX1rsu6g9b69k1772xcRw85vZWjQtVHSz89GF/k+Nku2zqZBidH3ZvrOr42uENiN3y8bQC9q6npzdH2+s3JEdsJwiOzfiB+4joFnIKvkIPWxR5ItrM3uFo/HozT1vZW72J4s7CXP7B3uDXdvbpeP7i+uGLXw4O9bndnJ9y8VHtnhlG4CI9dPvbpbfLoM7kY7GyvK+rZ1lX76C4IB0EwzRR6KZfjU2+MeYWcbxzvTI8HZ+sXG2ebZ8e76+2jy25rO52apUSS1Lb8sPttjje1+2VjMPF1d3By0Eo3KkySSMxTN3J8V7o/Dx6O28dDtj4Nrq82x3OBvdAlSUB/Hpelre7OyfSix6bBcAH35zHPtgbZ3m73bHCxvdmtMGni0fHw51Hv4HfviE2vD3YHYYWKE+E/GjTbBhRNvbgI2c3VePcsDYcDU7mmR+PYTXz0/PlzGAkskYUnGUWMMBy4JDKMJfQmEdKNIsTxzYRw7KOIDLnLCRYooBy9UaF66obEGz9DhyNOYzKJnyGFGhMhdNBhhhMfJx7sMVwmrRAYTRj4CEa//YbKGVIwsqboPyrLKuBYA+sxsM1Hv/9u+Tgt57hIw436hCRBUI1DjyaBJcApiYfLFa6gk8TfqIZy3LLXrfVy7LmE04rqTZioBgFNpEIkYaucCv2xxUg2nAQbdZBQjq32fJgIxjfLAXOTkFoLPDMhckTFQVgwg7kr1YVUCskYSXziuZLy1hxVtPNvMbQ4jrArciUzP7QmkkRCj27Bukb9KM9JMj3Hl2iFBCihErkRx64/LU8A+6tGHzwBmUBf+YeE1RJnnU6HCKcYrKyuomq+2DanmYrZ60RMOEZvXcWJud4YjlMgl+M5m4JLBSSjOOROQV7xVhoZhvnGM9QI3MSbjnyuv5WJGPbUd4hpjCWfqm9JZIRFPu+BU4H11CccNdztHuVYb44oXF30Vn1HNAmlO4xwY1WJDDL/mTtlaZ9bIkcUrvoGx4yKBggfTmKcSAN9U/DcpQv1S1uXIWGoU0DWDbLeo5DSEELTUyRsCS2D4004B2zHjf3tTdvHQzSSkgkIdD+y8x02xGszIskka/oQip5s/hiS4bNxiCzyo4y/fEGST7DxVWQGKjjREmSjDCJ8+s0IR24AlwDSLIuNyh4fAEeOMDr8V//96fvz147+eA05LYVwS5RZUQppRYmkE0vfwJmquu7v2F9euR0Rb/RNZVaNb80iy0rz+q52yLXEhRiNiDfVbHuvuggyq4e1ZoaAhAeGazRhvimaCU1wUwXLl1tOJG42UBNLr1nDstaaOZqdxQv5k4ET5biH4Ivat8AgCktbkAglqW+ERCIPPBNXxw8zo8lQn/0wHtII4PzmIpoNawzPv8cDwuvw9BV68+7D+cu3b8EIeeqCqLTAk8W+aVkFW6sSxES2thEkEnVaKs5IQMAI81IWSYpUJQOR5OtFCVYcXQ4GhBtHGPlS4u//7/N8F5RCkHY5ZOHmCE6mCZVYgrOJaNYcwDCKO82BzcsrIWhT1Vnmd/ahL8i9HSOri8x9EzU+M6iLJFremDWAok7QFM0GGNJcrXNwAApErJWEszqVayqvU5WJ70lxS/m4aSypHwN7I4rMXuU8hc3Qm1cdtFwaxTSWWirPg6VyLf0MBnBb6pLJspgLfrG8KEenCQRtenP5cwk0W7NDDNl7yrCwpUhN0FVbzAIh9NVvr3387+onUBou0wB9RNYd7C8Ym+jTP9XhJbrCzSV/zTnlHfSOaukgGiB16pio9Kirofdl4K1KHRyJ/IkD2lS+AekC5C0YzkyttWE8lfI3EzeRtgieUu8S8/EGAM2+r7z2kEfp7i/ovragvAcZxfYSYaIn1L5C/QXqP6HqCX/KI1d4v0LfJ/JySPbcCibq7rLzf5COMBSCqrwRtjvkxA+xrxKAHd6BYVTR+1SmeRzz/7cV/Yes6Kw5IRT5tnqUnRzYsfukOeMe9C9JHU/lTaOwvev04aYXPcyPcIJtKG9tqJGe0iAPMvk1pskz6xI6pGya1yw5bNGiUg/RPhIeJwxKJIbKmqRoYc0Wm3e2J9J8Vb1LN0PeAaE9KEbdyIH6eywckN8ByxNVOEc4xXnLY7691oWboQ/nfaeXD5xXC8uqttAMHfZenTqnqv3VK/uNfaz+2f3Yz1erls1Mn7sTT6R+HwoHZ1LV3hCFWaHgQhdmhnrve2nbeRlF51D1wYPK7+NQx2+1LiKi2Fr2WEAcHEUkTLB6jwV0LrFaMUPnh0cvlclU6OfzecdjhopIqNYvNAxnaKEkdAqiRxwWUbh40zDfVOsC3t9yfmbDC99Y+rt12krFYr1WN09mqoeC42GkQ0FLaRh1B/vbpkrTD0DciIa0bV+zUAXM4owqn/vqRLj2xv5p2fjj+jSNfu6L+gFZHX+nw/WWlcZ33aDxDEKJTaRTdHe/s3rBGjbzA3jxMpe7sYB96sBX5vT9Ri1L6McwQi9evFDpN+dXb3bnaqgu1MPMl+8zr5qhfJJIAnkpB4QHiQR/w5A4yi6mno9xTPm0g8zWRtG/9TPH9VRd3UF0qFuwOQKC14dURXgHfTTXzE/PitniHAHi4s3rf5vlNBQ4vZwiSpKmzEr5tIkgSLgDf92CyVyZTsU2coc4AowPebZ5B8Q5FFrMKg/uOtXkSjpIKMA5EVoX5ZzmpxpkPSN9jTjPUKhINT8IW8tU35DzvP9IuIV4/xrwSJPR4YSnDyFCFlhArAX513ja/SAd5c/5BxAhB9QQZ8bsL0cy3izuGQAA",
+    "dynamicDockerImage": true,
+    "checksum": "E8D34DADCA2FB958A6B59FA43F5A4C0D",
+    "docContents": "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",
+    "staticInstanceType": "mem3_ssd1_v2_x2",
+    "version": "2.11.6",
+    "parseOptions": {
+      "regime": "Moderate"
+    },
+    "fileDependencies": [
+      "dx://project-Gvb6zBQ0YyvXz35byYpBX3zX:file-GxVY7600YyvQ5Z3GzfgYffyx",
+      "dx://project-Gvb6zBQ0YyvXz35byYpBX3zX:file-Gvk4k480Yyvpv1F7KyVPpyfb",
+      "dx://project-Gvb6zBQ0YyvXz35byYpBX3zX:file-Gvk4k480Yyvzyvz9GpyjB8Yg",
+      "dx://project-Gvb6zBQ0YyvXz35byYpBX3zX:file-Gvk4k480YyvxkG60jFYKB1v2",
+      "dx://project-Gvb6zBQ0YyvXz35byYpBX3zX:file-Gx6yjBQ0YyvVVgpqZk8QvgbY",
+      "dx://project-Gvb6zBQ0YyvXz35byYpBX3zX:file-Gvk4k480YyvQ5Yx98FQYV64F",
+      "dx://project-Gvb6zBQ0YyvXz35byYpBX3zX:file-Gvk4k480Yyvgk3Jbp0yfjZ4k"
+    ]
+  },
+  "ignoreReuse": false,
+  "regionalOptions": {
+    "aws:us-east-1": {
+      "systemRequirements": {
+        "main": {
+          "instanceType": "mem3_ssd1_v2_x2"
+        }
+      },
+      "bundledDepends": [
+        {
+          "name": "dxWDLrt.tar.gz",
+          "id": {
+            "$dnanexus_link": "file-Gj0ykK801kpg7k3Xx3pF2qff"
+          }
+        }
+      ]
+    }
+  }
+}
